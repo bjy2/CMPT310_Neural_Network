@@ -197,8 +197,11 @@ class PerceptronModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        score = self.run(x)
-        return 1 if nn.as_scalar(score) >= 0 else -1
+        dot_product = self.run(x)
+        if nn.as_scalar(dot_product) >= 0:
+            return 1
+        else:
+            return -1
 
     def train(self, dataset):
         """
@@ -206,10 +209,9 @@ class PerceptronModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        batch_size = 1
         while True:
             misclassified = False
-            for x, y in dataset.iterate_once(batch_size):
+            for x, y in dataset.iterate_once(1):
                 prediction = self.get_prediction(x)
                 true_label = nn.as_scalar(y)
                 if prediction != true_label:
@@ -231,7 +233,7 @@ class RegressionModel(object):
         # layers and corresponding weights, what is the batch_size, and learning_rate.
         "*** YOUR CODE HERE ***"
         self.batch_size = 200
-        self.learning_rate = 0.015
+        self.learning_rate = 0.01
 
         # Define network architecture
         self.w1 = nn.Parameter(1, 16)  # Input to first hidden layer
@@ -320,7 +322,17 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        self.batch_size = 100
+        self.learning_rate = 0.5
+
+        # Define network architecture: 784 -> 256 -> 128 -> 10
+        self.w1 = nn.Parameter(784, 256)
+        self.b1 = nn.Parameter(1, 256)
+        self.w2 = nn.Parameter(256, 128)
+        self.b2 = nn.Parameter(1, 128)
+        self.w3 = nn.Parameter(128, 10)
+        self.b3 = nn.Parameter(1, 10)
 
     def run(self, x):
         """
@@ -337,7 +349,13 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        h1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        # Second hidden layer
+        h2 = nn.ReLU(nn.AddBias(nn.Linear(h1, self.w2), self.b2))
+        # Output layer (no activation)
+        logits = nn.AddBias(nn.Linear(h2, self.w3), self.b3)
+        return logits
 
     def get_loss(self, x, y):
         """
@@ -353,14 +371,32 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        return nn.SoftmaxLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        while True:
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                grads = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3])
+
+                # Update parameters with gradient descent
+                self.w1.update(grads[0], -self.learning_rate)
+                self.b1.update(grads[1], -self.learning_rate)
+                self.w2.update(grads[2], -self.learning_rate)
+                self.b2.update(grads[3], -self.learning_rate)
+                self.w3.update(grads[4], -self.learning_rate)
+                self.b3.update(grads[5], -self.learning_rate)
+
+            # Check validation accuracy
+            val_accuracy = dataset.get_validation_accuracy()
+            if val_accuracy >= 0.98:
+                break
 
 ###################################################################################
 class LanguageIDModel(object):
@@ -381,7 +417,15 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        self.hidden_num = 100
+        self.max_word_length = 30
+
+        self.wxs = [nn.Parameter(self.num_chars, self.hidden_num)] * self.max_word_length
+        self.wxs_end = [nn.Parameter(self.num_chars, len(self.languages))] * self.max_word_length
+
+        self.whs = [nn.Parameter(self.hidden_num, self.hidden_num)] * self.max_word_length
+        self.whs_end = [nn.Parameter(self.hidden_num, len(self.languages))] * self.max_word_length
 
 
     def run(self, xs):
@@ -414,7 +458,30 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        outcome = None
+        l = len(xs)
+        for i, x in enumerate(xs):
+            if i == l - 1:
+                z = nn.Linear(x, self.wxs_end[i])
+
+                if not outcome:
+                    outcome = z
+                else:
+                    outcome = nn.Linear(outcome, self.whs_end[i])
+                    outcome = nn.Add(outcome, z)
+
+                return outcome
+
+            z = nn.Linear(x, self.wxs[i])
+
+            if not outcome:
+                outcome = nn.Linear(x, self.wxs[i])
+            else:
+                outcome = nn.Linear(outcome, self.whs[i])
+                outcome = nn.Add(outcome, z)
+
+            outcome = nn.ReLU(outcome)
 
     def get_loss(self, xs, y):
         """
@@ -431,7 +498,8 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        return nn.SoftmaxLoss(self.run(xs), y)
 
     def train(self, dataset):
         """
@@ -439,4 +507,21 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
         "*** hint: User get_validation_accuracy() to decide when to finish learning ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        batch_size = 120
+        learning_rate = 0.01
+
+        for x, y in dataset.iterate_forever(batch_size):
+            loss = self.get_loss(x, y)
+
+            gs = nn.gradients(loss, self.wxs + self.wxs_end + self.whs + self.whs_end)
+            for i in range(self.max_word_length):
+                self.wxs[i].update(gs[i], -learning_rate)
+                self.wxs_end[i].update(gs[i + self.max_word_length], -learning_rate)
+
+                if i > 0:
+                    self.whs[i].update(gs[i + self.max_word_length * 2], -learning_rate)
+                    self.whs_end[i].update(gs[i + self.max_word_length * 3], -learning_rate)
+
+            if dataset.get_validation_accuracy() > 0.86:
+                return
