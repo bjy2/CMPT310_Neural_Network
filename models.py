@@ -83,7 +83,6 @@ class NaiveBayesDigitClassificationModel(object):
                     feature_count = commonConditionalProb[(feat, label)]
                     label_count = commonPrior[label]
 
-                    # Apply Laplace smoothing
                     conditionalProb[(feat, label)] = (feature_count + self.k) / (
                                 label_count + self.k * len(self.features))
 
@@ -209,17 +208,14 @@ class PerceptronModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        while True:
-            misclassified = False
+        converged = False
+        while not converged:
+            converged = True
             for x, y in dataset.iterate_once(1):
                 prediction = self.get_prediction(x)
-                true_label = nn.as_scalar(y)
-                if prediction != true_label:
-                    misclassified = True
-                    # Update weights: w += x * (true_label)
-                    self.w.update(x, true_label)
-            if not misclassified:
-                break
+                if prediction != nn.as_scalar(y):
+                    self.w.update(x, nn.as_scalar(y))
+                    converged = False
 
 ########################################################################33
 class RegressionModel(object):
@@ -233,16 +229,15 @@ class RegressionModel(object):
         # layers and corresponding weights, what is the batch_size, and learning_rate.
         "*** YOUR CODE HERE ***"
         self.batch_size = 200
-        self.learning_rate = 0.01
+        self.learning_rate = 0.005
 
-        # Define network architecture
-        self.w1 = nn.Parameter(1, 16)  # Input to first hidden layer
+        self.w1 = nn.Parameter(1, 16)
         self.b1 = nn.Parameter(1, 16)
-        self.w2 = nn.Parameter(16, 12)  # First hidden to second hidden layer
+        self.w2 = nn.Parameter(16, 12)
         self.b2 = nn.Parameter(1, 12)
-        self.w3 = nn.Parameter(12, 8)  # Second hidden to third hidden layer
+        self.w3 = nn.Parameter(12, 8)
         self.b3 = nn.Parameter(1, 8)
-        self.w4 = nn.Parameter(8, 1)  # Third hidden to output layer
+        self.w4 = nn.Parameter(8, 1)
         self.b4 = nn.Parameter(1, 1)
 
     def run(self, x):
@@ -255,13 +250,12 @@ class RegressionModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        # First layer: Linear + ReLU
         h1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
         h2 = nn.ReLU(nn.AddBias(nn.Linear(h1, self.w2), self.b2))
         h3 = nn.ReLU(nn.AddBias(nn.Linear(h2, self.w3), self.b3))
-        # Output layer: Linear only (regression)
-        output = nn.AddBias(nn.Linear(h3, self.w4), self.b4)
-        return output
+
+        predicted_y = nn.AddBias(nn.Linear(h3, self.w4), self.b4)
+        return predicted_y
 
     def get_loss(self, x, y):
         """
@@ -275,8 +269,7 @@ class RegressionModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        predictions = self.run(x)
-        return nn.SquareLoss(predictions, y)
+        return nn.SquareLoss(self.run(x), y)
 
 
     def train(self, dataset):
@@ -289,7 +282,6 @@ class RegressionModel(object):
             loss = self.get_loss(x, y)
             gradients = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3, self.w4, self.b4])
 
-            # Update parameters
             self.w1.update(gradients[0], -self.learning_rate)
             self.b1.update(gradients[1], -self.learning_rate)
             self.w2.update(gradients[2], -self.learning_rate)
@@ -299,10 +291,8 @@ class RegressionModel(object):
             self.w4.update(gradients[6], -self.learning_rate)
             self.b4.update(gradients[7], -self.learning_rate)
 
-            # Check for stopping condition (optional)
-            if nn.as_scalar(loss) < 0.02:  # Adjust threshold as needed
+            if nn.as_scalar(loss) < 0.019:
                 break
-
 
 ##########################################################################
 class DigitClassificationModel(object):
@@ -326,7 +316,6 @@ class DigitClassificationModel(object):
         self.batch_size = 100
         self.learning_rate = 0.5
 
-        # Define network architecture: 784 -> 256 -> 128 -> 10
         self.w1 = nn.Parameter(784, 256)
         self.b1 = nn.Parameter(1, 256)
         self.w2 = nn.Parameter(256, 128)
@@ -351,11 +340,10 @@ class DigitClassificationModel(object):
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
         h1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
-        # Second hidden layer
         h2 = nn.ReLU(nn.AddBias(nn.Linear(h1, self.w2), self.b2))
-        # Output layer (no activation)
-        logits = nn.AddBias(nn.Linear(h2, self.w3), self.b3)
-        return logits
+
+        predicted_score = nn.AddBias(nn.Linear(h2, self.w3), self.b3)
+        return predicted_score
 
     def get_loss(self, x, y):
         """
@@ -383,17 +371,15 @@ class DigitClassificationModel(object):
         while True:
             for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
-                grads = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3])
+                gradients = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3])
 
-                # Update parameters with gradient descent
-                self.w1.update(grads[0], -self.learning_rate)
-                self.b1.update(grads[1], -self.learning_rate)
-                self.w2.update(grads[2], -self.learning_rate)
-                self.b2.update(grads[3], -self.learning_rate)
-                self.w3.update(grads[4], -self.learning_rate)
-                self.b3.update(grads[5], -self.learning_rate)
+                self.w1.update(gradients[0], -self.learning_rate)
+                self.b1.update(gradients[1], -self.learning_rate)
+                self.w2.update(gradients[2], -self.learning_rate)
+                self.b2.update(gradients[3], -self.learning_rate)
+                self.w3.update(gradients[4], -self.learning_rate)
+                self.b3.update(gradients[5], -self.learning_rate)
 
-            # Check validation accuracy
             val_accuracy = dataset.get_validation_accuracy()
             if val_accuracy >= 0.98:
                 break
@@ -418,15 +404,17 @@ class LanguageIDModel(object):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        self.hidden_num = 100
-        self.max_word_length = 30
+        self.learning_rate = 0.2
+        self.batch_size = 100
 
-        self.wxs = [nn.Parameter(self.num_chars, self.hidden_num)] * self.max_word_length
-        self.wxs_end = [nn.Parameter(self.num_chars, len(self.languages))] * self.max_word_length
+        self.w_input = nn.Parameter(self.num_chars, 100)
+        self.b_input = nn.Parameter(1, 100)
 
-        self.whs = [nn.Parameter(self.hidden_num, self.hidden_num)] * self.max_word_length
-        self.whs_end = [nn.Parameter(self.hidden_num, len(self.languages))] * self.max_word_length
+        self.w_hidden = nn.Parameter(100, 100)
+        self.b_hidden = nn.Parameter(1, 100)
 
+        self.w_output = nn.Parameter(100, 5)
+        self.b_output = nn.Parameter(1, 5)
 
     def run(self, xs):
         """
@@ -459,29 +447,17 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        outcome = None
-        l = len(xs)
+        h = None
         for i, x in enumerate(xs):
-            if i == l - 1:
-                z = nn.Linear(x, self.wxs_end[i])
-
-                if not outcome:
-                    outcome = z
-                else:
-                    outcome = nn.Linear(outcome, self.whs_end[i])
-                    outcome = nn.Add(outcome, z)
-
-                return outcome
-
-            z = nn.Linear(x, self.wxs[i])
-
-            if not outcome:
-                outcome = nn.Linear(x, self.wxs[i])
+            x_transformed = nn.AddBias(nn.Linear(x, self.w_input), self.b_input)
+            if h is None:
+                h = nn.ReLU(x_transformed)
             else:
-                outcome = nn.Linear(outcome, self.whs[i])
-                outcome = nn.Add(outcome, z)
+                h_transformed = nn.AddBias(nn.Linear(h, self.w_hidden), self.b_hidden)
+                combined = nn.Add(x_transformed, h_transformed)
+                h = nn.ReLU(combined)
 
-            outcome = nn.ReLU(outcome)
+        return nn.AddBias(nn.Linear(h, self.w_output), self.b_output)
 
     def get_loss(self, xs, y):
         """
@@ -508,20 +484,17 @@ class LanguageIDModel(object):
         "*** YOUR CODE HERE ***"
         "*** hint: User get_validation_accuracy() to decide when to finish learning ***"
         #util.raiseNotDefined()
-        batch_size = 120
-        learning_rate = 0.01
 
-        for x, y in dataset.iterate_forever(batch_size):
-            loss = self.get_loss(x, y)
+        while dataset.get_validation_accuracy() < 0.88:
+            for xs, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(xs, y)
+                grads = nn.gradients(loss, [self.w_input, self.b_input,
+                                            self.w_hidden, self.b_hidden,
+                                            self.w_output, self.b_output])
 
-            gs = nn.gradients(loss, self.wxs + self.wxs_end + self.whs + self.whs_end)
-            for i in range(self.max_word_length):
-                self.wxs[i].update(gs[i], -learning_rate)
-                self.wxs_end[i].update(gs[i + self.max_word_length], -learning_rate)
-
-                if i > 0:
-                    self.whs[i].update(gs[i + self.max_word_length * 2], -learning_rate)
-                    self.whs_end[i].update(gs[i + self.max_word_length * 3], -learning_rate)
-
-            if dataset.get_validation_accuracy() > 0.86:
-                return
+                self.w_input.update(grads[0], -self.learning_rate)
+                self.b_input.update(grads[1], -self.learning_rate)
+                self.w_hidden.update(grads[2], -self.learning_rate)
+                self.b_hidden.update(grads[3], -self.learning_rate)
+                self.w_output.update(grads[4], -self.learning_rate)
+                self.b_output.update(grads[5], -self.learning_rate)
