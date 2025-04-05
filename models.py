@@ -54,11 +54,8 @@ class NaiveBayesDigitClassificationModel(object):
             #util.raiseNotDefined()
             commonPrior[label] += 1
 
-            # Update the counts for each feature with the corresponding label
             for feat in datum:
                 commonCounts[(feat, label)] += datum[feat]
-
-                # Conditional probability for feature being 1, given a label
                 if datum[feat] == 1:
                     commonConditionalProb[(feat, label)] += 1
 
@@ -82,9 +79,7 @@ class NaiveBayesDigitClassificationModel(object):
                     #util.raiseNotDefined()
                     feature_count = commonConditionalProb[(feat, label)]
                     label_count = commonPrior[label]
-
-                    conditionalProb[(feat, label)] = (feature_count + self.k) / (
-                                label_count + self.k * len(self.features))
+                    conditionalProb[(feat, label)] = (feature_count + self.k) / (label_count + self.k * len(self.features))
 
             # normalizing:
             prior.normalize()
@@ -125,12 +120,8 @@ class NaiveBayesDigitClassificationModel(object):
              "it to find best guess digit for datum and at the end accumulate in self.posteriors for later use")
             util.raiseNotDefined()"""
             logJoint = self.calculateLogJointProbabilities(datum)
-
-            # Find the label with the highest log-joint probability
             bestLabel = max(logJoint, key=logJoint.get)
             guesses.append(bestLabel)
-
-            # Store the posterior log-probabilities for later analysis
             self.posteriors.append(logJoint)
         return guesses
 
@@ -148,8 +139,7 @@ class NaiveBayesDigitClassificationModel(object):
         for label in self.legalLabels:
             "*** YOUR CODE HERE, to populate logJoint() list ***"
             #util.raiseNotDefined()
-            logProb = math.log(self.prior[label])  # log(P(y))
-
+            logProb = math.log(self.prior[label])
             for feat in self.features:
                 if feat in datum:
                     logProb += datum[feat] * math.log(self.conditionalProb[(feat, label)])
@@ -229,15 +219,15 @@ class RegressionModel(object):
         # layers and corresponding weights, what is the batch_size, and learning_rate.
         "*** YOUR CODE HERE ***"
         self.batch_size = 200
-        self.learning_rate = 0.005
+        self.learning_rate = 0.01
 
-        self.w1 = nn.Parameter(1, 16)
-        self.b1 = nn.Parameter(1, 16)
-        self.w2 = nn.Parameter(16, 12)
-        self.b2 = nn.Parameter(1, 12)
-        self.w3 = nn.Parameter(12, 8)
-        self.b3 = nn.Parameter(1, 8)
-        self.w4 = nn.Parameter(8, 1)
+        self.w1 = nn.Parameter(1, 32)
+        self.b1 = nn.Parameter(1, 32)
+        self.w2 = nn.Parameter(32, 32)
+        self.b2 = nn.Parameter(1, 32)
+        self.w3 = nn.Parameter(32, 16)
+        self.b3 = nn.Parameter(1, 16)
+        self.w4 = nn.Parameter(16, 1)
         self.b4 = nn.Parameter(1, 1)
 
     def run(self, x):
@@ -404,15 +394,13 @@ class LanguageIDModel(object):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
-        self.learning_rate = 0.2
         self.batch_size = 100
+        self.learning_rate = 0.15
 
         self.w_input = nn.Parameter(self.num_chars, 100)
         self.b_input = nn.Parameter(1, 100)
-
         self.w_hidden = nn.Parameter(100, 100)
         self.b_hidden = nn.Parameter(1, 100)
-
         self.w_output = nn.Parameter(100, 5)
         self.b_output = nn.Parameter(1, 5)
 
